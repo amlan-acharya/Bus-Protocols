@@ -1,4 +1,4 @@
-//Code by :: AMLAN PRATEEK ACHARYA
+//Code by :: AMLAN PRATEEK ACHARYA :: APB PERIPHERAL
 
 `timescale 1ns/1ps
 
