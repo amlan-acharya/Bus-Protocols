@@ -1,4 +1,4 @@
-//Code by :: AMLAN PRATEEK ACHARYA :: APB SYSTEM
+//Code by :: AMLAN ACHARYA :: APB SYSTEM
 
 `timescale 1ns/1ps
 
