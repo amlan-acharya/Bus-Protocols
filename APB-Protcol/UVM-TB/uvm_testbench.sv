@@ -1,4 +1,5 @@
 //Code by :: AMLAN PRATEEK ACHARYA :: TESTBENCH
+// MEMORY
 
 `include "uvm_macros.svh"
 import uvm_pkg::*;
@@ -30,6 +31,7 @@ class ctrl_reg0 extends uvm_reg;
   endfunction
   
   function void build();
+    data=uvm_reg_field::type_id::create("data");
     data.configure(.parent(this),
                    .size(32),
                    .lsb_pos(0),
@@ -51,6 +53,7 @@ class ctrl_reg1 extends uvm_reg;
   endfunction
   
   function void build();
+    data=uvm_reg_field::type_id::create("data");
     data.configure(.parent(this),
                    .size(32),
                    .lsb_pos(0),
@@ -73,6 +76,7 @@ class ctrl_reg2 extends uvm_reg;
   endfunction
   
   function void build();
+    data=uvm_reg_field::type_id::create("data");
     data.configure(.parent(this),
                    .size(32),
                    .lsb_pos(0),
@@ -95,6 +99,7 @@ class ctrl_reg3 extends uvm_reg;
   endfunction
   
   function void build();
+    data=uvm_reg_field::type_id::create("data");
     data.configure(.parent(this),
                    .size(32),
                    .lsb_pos(0),
@@ -117,6 +122,7 @@ class ctrl_reg4 extends uvm_reg;
   endfunction
   
   function void build();
+    data=uvm_reg_field::type_id::create("data");
     data.configure(.parent(this),
                    .size(32),
                    .lsb_pos(0),
@@ -182,9 +188,9 @@ class wr_reg_seq extends uvm_sequence;
   
   task body();
     uvm_status_e status;
-    regbl.reg0.set('h1);
-    regbl.reg0.update(status);
-    `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value()),UVM_HIGH);
+    `uvm_info(get_type_name,"WRITE SEQ STARTED",UVM_MEDIUM);
+    regbl.reg0.write(status,'h1);
+    `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value()),UVM_MEDIUM);
   endtask
   
 endclass
@@ -202,8 +208,9 @@ class rd_reg_seq extends uvm_sequence;
   task body();
     uvm_status_e status;
     bit [7:0] read_data;
+    `uvm_info(get_type_name,"READ SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.read(status,read_data);
-    `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h | Read Data : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value(),read_data),UVM_HIGH);
+    `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h | Read Data : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value(),read_data),UVM_MEDIUM);
   endtask
   
 endclass
@@ -263,9 +270,11 @@ class driver extends uvm_driver #(transaction);
       seq_item_port.get_next_item(tr);
       apb_if.pwrite=tr.pwrite;
       apb_if.ptransfer=1;
+      apb_if.paddr=tr.paddr;
       if(tr.pwrite) apb_if.pwdata=tr.pwdata;
       apb_if.presetn=0;
       @(posedge apb_if.pready)
+      apb_if.ptransfer=0;
       seq_item_port.item_done();
     end
     
@@ -298,6 +307,7 @@ class monitor extends uvm_monitor;
     
     forever begin
       @(posedge apb_if.pready)
+      `uvm_info(get_type_name(),"Main Phase Started",UVM_MEDIUM);
       tr.pwrite=apb_if.pwrite;
       tr.paddr=apb_if.paddr;
       tr.pwdata=apb_if.pwdata;
@@ -321,7 +331,7 @@ class scoreboard extends uvm_scoreboard;
   endfunction
   
   uvm_analysis_imp #(transaction,scoreboard) recv_scb;
-  logic [31:0] data_check;
+  logic [31:0] data_check='h0;
   
   virtual function void build_phase (uvm_phase phase);
     super.build_phase(phase);
@@ -329,6 +339,7 @@ class scoreboard extends uvm_scoreboard;
   endfunction
   
   virtual function void write (input transaction tr);
+    `uvm_info(get_type_name(),"Write Started",UVM_MEDIUM);
     if(tr.pwrite) begin
       data_check=tr.pwdata;
       `uvm_info(get_type_name,$sformatf("DATA STORED = %0h",data_check),UVM_MEDIUM);
@@ -388,19 +399,22 @@ class env extends uvm_env;
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
     agt=agent::type_id::create("agt",this);
-    scb=scoreboard::type_id::create("scb",this);
     reg_bl=reg_block::type_id::create("reg_bl");
     reg_bl.build();
     adp=adapter::type_id::create("adp",,get_full_name());
+    prd=uvm_reg_predictor#(transaction)::type_id::create("prd",this);
+    scb=scoreboard::type_id::create("scb",this);
   endfunction
   
   virtual function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
-    agt.mon.send.connect(scb.recv_scb);
     reg_bl.default_map.set_sequencer(.sequencer(agt.seqr),.adapter(adp));
     reg_bl.default_map.set_base_addr(0);
     prd.map=reg_bl.default_map;
     prd.adapter=adp;
+    agt.mon.send.connect(prd.bus_in);
+    agt.mon.send.connect(scb.recv_scb);
+
   endfunction
     
 endclass
@@ -408,7 +422,7 @@ endclass
 // TEST //
 
 class test extends uvm_test;
-  `uvm_object_utils(test);
+  `uvm_component_utils(test);
   
   function new(string name="test",uvm_component parent=null);
     super.new(name,parent);
@@ -428,6 +442,10 @@ class test extends uvm_test;
   virtual task main_phase(uvm_phase phase);
     phase.raise_objection(this);
     wr.regbl=e.reg_bl;
+    rd.regbl=e.reg_bl;
+    rd.start(e.agt.seqr);
+    #60;
+    //rd.start(e.agt.seqr);
     phase.drop_objection(this);
   endtask
   
@@ -435,21 +453,19 @@ endclass
 
 // TOP //
 
-module tb();
+module top();
   
   apb_system_if apb_if();
   apb_system apb (apb_if.pwrite,apb_if.pclk,apb_if.ptransfer,apb_if.presetn,apb_if.paddr,apb_if.pwdata,apb_if.prdata,apb_if.pready,apb_if.pslverr);
- 
+
+  
   initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
     uvm_config_db#(virtual apb_system_if)::set(null,"*","apb_if",apb_if);
     run_test("test");
   end
   initial apb_if.pclk=0;
   always #10 apb_if.pclk=~apb_if.pclk;
-  
-  initial begin
-    $dumpfile("dump.vcd");
-    $dumpvars;
-  end
   
 endmodule

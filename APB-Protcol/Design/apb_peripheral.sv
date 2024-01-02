@@ -10,7 +10,8 @@ module apb_peripheral(
     input [31:0] pwdata
   );
   localparam N = 1024;
-  reg [31:0] ctrl_reg[N];
+  //reg [31:0] ctrl_reg[N];
+  reg [31:0] ctrl_reg0='h0,ctrl_reg1='h0,ctrl_reg2='h0,ctrl_reg3='h0,ctrl_reg4='h0,temp;
   reg [1:0] state;
   localparam IDLE = 2'd0, SETUP = 2'd1, TRANSFER = 2'd2, ERROR = 2'd3;
 
@@ -34,21 +35,47 @@ module apb_peripheral(
           default : state=IDLE;
       endcase
     end
+    else begin
+      ctrl_reg0='h0;
+      ctrl_reg1='h0;
+      ctrl_reg2='h0;
+      ctrl_reg3='h0;
+      ctrl_reg4='h0;
+    end
   end
 
   always @(state) begin
     case (state)
-      IDLE : begin pready<=1'b0; pslverr=1'b0; prdata<='hz; end
-      SETUP : pready<=1'b1;
+      IDLE : begin pready<=1'b0; pslverr<=1'b0; prdata<='hz; end
+      SETUP : pready<=1'b0;
       TRANSFER :
       begin
-        if(pwrite) ctrl_reg[paddr]<=pwdata; //WRITE OPERATION
-        else prdata<=ctrl_reg[paddr];  //READ OPERATION
-        pready<=1'b0;
+        pready<=1'b1;
+        if(pwrite) begin //WRITE OPERATION
+          temp=pwdata;
+          case(paddr)
+            'd0: ctrl_reg0=temp;
+          	'd1: ctrl_reg1=temp;
+          	'd2: ctrl_reg2=temp;
+          	'd3: ctrl_reg3=temp;
+          	'd4: ctrl_reg4=temp;
+            default : ctrl_reg0=temp;
+          endcase
+        end
+        else begin //READ OPERATION
+          case(paddr)
+            'd0: temp=ctrl_reg0;
+          	'd1: temp=ctrl_reg1;
+          	'd2: temp=ctrl_reg2;
+          	'd3: temp=ctrl_reg3;
+          	'd4: temp=ctrl_reg4;
+            default : temp=ctrl_reg0;
+          endcase
+          prdata=temp;
+        end 
       end
       ERROR : pslverr=1'b1;
       default : begin pready<=1'b0; pslverr=1'b0; prdata<='hz; end
     endcase
   end
 endmodule
-
