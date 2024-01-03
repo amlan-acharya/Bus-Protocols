@@ -307,7 +307,6 @@ class monitor extends uvm_monitor;
     
     forever begin
       @(posedge apb_if.pready)
-      `uvm_info(get_type_name(),"Main Phase Started",UVM_MEDIUM);
       tr.pwrite=apb_if.pwrite;
       tr.paddr=apb_if.paddr;
       tr.pwdata=apb_if.pwdata;
@@ -339,7 +338,6 @@ class scoreboard extends uvm_scoreboard;
   endfunction
   
   virtual function void write (input transaction tr);
-    `uvm_info(get_type_name(),"Write Started",UVM_MEDIUM);
     if(tr.pwrite) begin
       data_check=tr.pwdata;
       `uvm_info(get_type_name,$sformatf("DATA STORED = %0h",data_check),UVM_MEDIUM);
@@ -443,10 +441,10 @@ class test extends uvm_test;
     phase.raise_objection(this);
     wr.regbl=e.reg_bl;
     rd.regbl=e.reg_bl;
-    rd.start(e.agt.seqr);
-    #60;
+    wr.start(e.agt.seqr);
     //rd.start(e.agt.seqr);
     phase.drop_objection(this);
+    phase.phase_done.set_drain_time(this, 60);
   endtask
   
 endclass
@@ -466,6 +464,6 @@ module top();
     run_test("test");
   end
   initial apb_if.pclk=0;
-  always #10 apb_if.pclk=~apb_if.pclk;
+  always #20 apb_if.pclk=~apb_if.pclk;
   
 endmodule

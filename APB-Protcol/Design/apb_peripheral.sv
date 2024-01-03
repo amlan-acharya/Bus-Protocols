@@ -47,10 +47,9 @@ module apb_peripheral(
   always @(state) begin
     case (state)
       IDLE : begin pready<=1'b0; pslverr<=1'b0; prdata<='hz; end
-      SETUP : pready<=1'b0;
+      SETUP : pready<=1'b1;
       TRANSFER :
       begin
-        pready<=1'b1;
         if(pwrite) begin //WRITE OPERATION
           temp=pwdata;
           case(paddr)
@@ -73,6 +72,7 @@ module apb_peripheral(
           endcase
           prdata=temp;
         end 
+        pready<=1'b0;
       end
       ERROR : pslverr=1'b1;
       default : begin pready<=1'b0; pslverr=1'b0; prdata<='hz; end
