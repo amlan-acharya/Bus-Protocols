@@ -72,7 +72,7 @@ module apb_peripheral(
           endcase
           prdata=temp;
         end 
-        pready<=1'b0;
+        pready=1'b0;
       end
       ERROR : pslverr=1'b1;
       default : begin pready<=1'b0; pslverr=1'b0; prdata<='hz; end
