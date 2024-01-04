@@ -187,10 +187,12 @@ class wr_reg_seq extends uvm_sequence;
   endfunction
   
   task body();
+    grab(m_sequencer);
     uvm_status_e status;
     `uvm_info(get_type_name,"WRITE SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.write(status,'h1);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value()),UVM_MEDIUM);
+    ungrab(m_sequencer);
   endtask
   
 endclass
@@ -206,11 +208,13 @@ class rd_reg_seq extends uvm_sequence;
   endfunction
   
   task body();
+    grab(m_sequencer);
     uvm_status_e status;
     bit [7:0] read_data;
     `uvm_info(get_type_name,"READ SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.read(status,read_data);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h | Read Data : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value(),read_data),UVM_MEDIUM);
+    ungrab(m_sequencer);
   endtask
   
 endclass
@@ -427,27 +431,27 @@ class test extends uvm_test;
   endfunction
   
   env e;
-  rd_reg_seq rd;
   wr_reg_seq wr;
-  
+  rd_reg_seq rd;
+
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
     e=env::type_id::create("e",this);
-    rd=rd_reg_seq::type_id::create("rd");
     wr=wr_reg_seq::type_id::create("wr");
+    rd=rd_reg_seq::type_id::create("rd"); 
   endfunction
   
   virtual task main_phase(uvm_phase phase);
     phase.raise_objection(this);
     wr.regbl=e.reg_bl;
     rd.regbl=e.reg_bl;
-    wr.start(e.agt.seqr);
-    //rd.start(e.agt.seqr);
+    //wr.start(e.agt.seqr);
+    rd.start(e.agt.seqr);
     phase.drop_objection(this);
-    phase.phase_done.set_drain_time(this, 60);
   endtask
   
 endclass
+
 
 // TOP //
 
