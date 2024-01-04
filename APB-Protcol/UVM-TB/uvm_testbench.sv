@@ -187,12 +187,12 @@ class wr_reg_seq extends uvm_sequence;
   endfunction
   
   task body();
-    grab(m_sequencer);
     uvm_status_e status;
+    //grab(m_sequencer);
     `uvm_info(get_type_name,"WRITE SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.write(status,'h1);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value()),UVM_MEDIUM);
-    ungrab(m_sequencer);
+    //ungrab(m_sequencer);
   endtask
   
 endclass
@@ -208,13 +208,13 @@ class rd_reg_seq extends uvm_sequence;
   endfunction
   
   task body();
-    grab(m_sequencer);
     uvm_status_e status;
     bit [7:0] read_data;
+    //grab(m_sequencer);
     `uvm_info(get_type_name,"READ SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.read(status,read_data);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h | Read Data : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value(),read_data),UVM_MEDIUM);
-    ungrab(m_sequencer);
+    //ungrab(m_sequencer);
   endtask
   
 endclass
@@ -264,6 +264,7 @@ class driver extends uvm_driver #(transaction);
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
+    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
     if(!uvm_config_db#(virtual apb_system_if)::get(this,"","apb_if",apb_if))
        `uvm_error(get_type_name,"CANNOT GET VIRTUAL INTERFACE")
     tr=transaction::type_id::create("tr");
@@ -272,12 +273,14 @@ class driver extends uvm_driver #(transaction);
   virtual task main_phase(uvm_phase phase);
     forever begin
       seq_item_port.get_next_item(tr);
+      `uvm_info(get_type_name(),"Main Phase",UVM_MEDIUM)
       apb_if.pwrite=tr.pwrite;
       apb_if.ptransfer=1;
       apb_if.paddr=tr.paddr;
       if(tr.pwrite) apb_if.pwdata=tr.pwdata;
       apb_if.presetn=0;
       @(posedge apb_if.pready)
+      repeat (2) @(posedge apb_if.pclk)
       apb_if.ptransfer=0;
       seq_item_port.item_done();
     end
@@ -301,6 +304,7 @@ class monitor extends uvm_monitor;
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
+    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
     if(!uvm_config_db#(virtual apb_system_if)::get(this,"","apb_if",apb_if))
        `uvm_error(get_type_name,"CANNOT GET VIRTUAL INTERFACE");
     tr=transaction::type_id::create("tr");
@@ -311,6 +315,8 @@ class monitor extends uvm_monitor;
     
     forever begin
       @(posedge apb_if.pready)
+      repeat (2) @(posedge apb_if.pclk)
+      `uvm_info(get_type_name(),"Main Phase",UVM_MEDIUM)
       tr.pwrite=apb_if.pwrite;
       tr.paddr=apb_if.paddr;
       tr.pwdata=apb_if.pwdata;
@@ -338,10 +344,12 @@ class scoreboard extends uvm_scoreboard;
   
   virtual function void build_phase (uvm_phase phase);
     super.build_phase(phase);
+    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
     recv_scb=new("recv_scb",this);
   endfunction
   
   virtual function void write (input transaction tr);
+  `uvm_info(get_type_name(),"Write Phase",UVM_MEDIUM)
     if(tr.pwrite) begin
       data_check=tr.pwdata;
       `uvm_info(get_type_name,$sformatf("DATA STORED = %0h",data_check),UVM_MEDIUM);
@@ -445,8 +453,10 @@ class test extends uvm_test;
     phase.raise_objection(this);
     wr.regbl=e.reg_bl;
     rd.regbl=e.reg_bl;
-    //wr.start(e.agt.seqr);
+    wr.start(e.agt.seqr);
+    #10;
     rd.start(e.agt.seqr);
+    //#200;
     phase.drop_objection(this);
   endtask
   
