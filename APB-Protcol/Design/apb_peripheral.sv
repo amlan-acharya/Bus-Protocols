@@ -9,7 +9,7 @@ module apb_peripheral(
     input [31:0] paddr,
     input [31:0] pwdata
   );
-  localparam N = 1024;
+  localparam N = 5;
   //reg [31:0] ctrl_reg[N];
   reg [31:0] ctrl_reg0='h0,ctrl_reg1='h0,ctrl_reg2='h0,ctrl_reg3='h0,ctrl_reg4='h0,temp;
   reg [1:0] state;
@@ -58,7 +58,6 @@ module apb_peripheral(
           	'd2: ctrl_reg2=temp;
           	'd3: ctrl_reg3=temp;
           	'd4: ctrl_reg4=temp;
-            default : ctrl_reg0=temp;
           endcase
         end
         else begin //READ OPERATION
@@ -68,7 +67,6 @@ module apb_peripheral(
           	'd2: temp=ctrl_reg2;
           	'd3: temp=ctrl_reg3;
           	'd4: temp=ctrl_reg4;
-            default : temp=ctrl_reg0;
           endcase
           prdata=temp;
         end 

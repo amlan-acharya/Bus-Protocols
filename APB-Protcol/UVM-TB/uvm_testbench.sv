@@ -1,5 +1,4 @@
-//Code by :: AMLAN PRATEEK ACHARYA :: TESTBENCH
-// MEMORY
+//Code by :: AMLAN PRATEEK ACHARYA :: APB SYSTEM :: TESTBENCH
 
 `include "uvm_macros.svh"
 import uvm_pkg::*;
@@ -17,7 +16,8 @@ class transaction extends uvm_sequence_item;
   rand logic [31:0] paddr, pwdata;
   logic [31:0] prdata;
   logic pready,pslverr,presetn,pclk,ptransfer;
-  
+  constraint addr_c {paddr<=5 ; }
+
 endclass
 
 // REGISTERS //
