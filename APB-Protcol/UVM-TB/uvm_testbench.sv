@@ -172,6 +172,7 @@ class reg_block extends uvm_reg_block;
     default_map.add_reg(reg2,'h2,"RW");
     default_map.add_reg(reg3,'h3,"RW");
     default_map.add_reg(reg4,'h4,"RW");
+    default_map.set_auto_predict(0);
     lock_model();
   endfunction
 endclass
@@ -188,11 +189,9 @@ class wr_reg_seq extends uvm_sequence;
   
   task body();
     uvm_status_e status;
-    //grab(m_sequencer);
     `uvm_info(get_type_name,"WRITE SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.write(status,'h1);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value()),UVM_MEDIUM);
-    //ungrab(m_sequencer);
   endtask
   
 endclass
@@ -210,14 +209,14 @@ class rd_reg_seq extends uvm_sequence;
   task body();
     uvm_status_e status;
     bit [7:0] read_data;
-    //grab(m_sequencer);
     `uvm_info(get_type_name,"READ SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.read(status,read_data);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h | Read Data : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value(),read_data),UVM_MEDIUM);
-    //ungrab(m_sequencer);
   endtask
   
 endclass
+
+// ADAPTER //
 
 class adapter extends uvm_reg_adapter;
   `uvm_object_utils(adapter);
@@ -244,7 +243,7 @@ class adapter extends uvm_reg_adapter;
     rw.kind=tr.pwrite?UVM_WRITE:UVM_READ;
     rw.addr=tr.paddr;
     rw.data=(tr.pwrite)?tr.pwdata:tr.prdata;
-    rw.status=UVM_IS_OK; 
+    rw.status=UVM_IS_OK;
   endfunction
   
 endclass
@@ -264,7 +263,7 @@ class driver extends uvm_driver #(transaction);
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
+    `uvm_info(get_type_name(),"Build Phase",UVM_HIGH)
     if(!uvm_config_db#(virtual apb_system_if)::get(this,"","apb_if",apb_if))
        `uvm_error(get_type_name,"CANNOT GET VIRTUAL INTERFACE")
     tr=transaction::type_id::create("tr");
@@ -273,7 +272,7 @@ class driver extends uvm_driver #(transaction);
   virtual task main_phase(uvm_phase phase);
     forever begin
       seq_item_port.get_next_item(tr);
-      `uvm_info(get_type_name(),"Main Phase",UVM_MEDIUM)
+      `uvm_info(get_type_name(),"Main Phase",UVM_HIGH)
       apb_if.pwrite=tr.pwrite;
       apb_if.ptransfer=1;
       apb_if.paddr=tr.paddr;
@@ -282,6 +281,7 @@ class driver extends uvm_driver #(transaction);
       @(posedge apb_if.pready)
       repeat (2) @(posedge apb_if.pclk)
       apb_if.ptransfer=0;
+      if(!tr.pwrite) tr.prdata=apb_if.prdata;
       seq_item_port.item_done();
     end
     
@@ -304,7 +304,7 @@ class monitor extends uvm_monitor;
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
+    `uvm_info(get_type_name(),"Build Phase",UVM_HIGH)
     if(!uvm_config_db#(virtual apb_system_if)::get(this,"","apb_if",apb_if))
        `uvm_error(get_type_name,"CANNOT GET VIRTUAL INTERFACE");
     tr=transaction::type_id::create("tr");
@@ -316,13 +316,14 @@ class monitor extends uvm_monitor;
     forever begin
       @(posedge apb_if.pready)
       repeat (2) @(posedge apb_if.pclk)
-      `uvm_info(get_type_name(),"Main Phase",UVM_MEDIUM)
+      `uvm_info(get_type_name(),"Main Phase",UVM_HIGH)
       tr.pwrite=apb_if.pwrite;
       tr.paddr=apb_if.paddr;
       tr.pwdata=apb_if.pwdata;
       tr.prdata=apb_if.prdata;
       tr.pready=apb_if.pready;
       tr.pslverr=apb_if.pslverr;
+      `uvm_info(get_type_name(),$sformatf("%0h | %0h | %0h",tr.pwrite,tr.prdata,tr.paddr),UVM_MEDIUM)
       send.write(tr);
     end
     
@@ -344,12 +345,12 @@ class scoreboard extends uvm_scoreboard;
   
   virtual function void build_phase (uvm_phase phase);
     super.build_phase(phase);
-    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
+    `uvm_info(get_type_name(),"Build Phase",UVM_HIGH)
     recv_scb=new("recv_scb",this);
   endfunction
   
   virtual function void write (input transaction tr);
-  `uvm_info(get_type_name(),"Write Phase",UVM_MEDIUM)
+  `uvm_info(get_type_name(),"Write Phase",UVM_HIGH)
     if(tr.pwrite) begin
       data_check=tr.pwdata;
       `uvm_info(get_type_name,$sformatf("DATA STORED = %0h",data_check),UVM_MEDIUM);
@@ -420,11 +421,10 @@ class env extends uvm_env;
     super.connect_phase(phase);
     reg_bl.default_map.set_sequencer(.sequencer(agt.seqr),.adapter(adp));
     reg_bl.default_map.set_base_addr(0);
-    prd.map=reg_bl.default_map;
-    prd.adapter=adp;
     agt.mon.send.connect(prd.bus_in);
     agt.mon.send.connect(scb.recv_scb);
-
+    prd.map=reg_bl.default_map;
+    prd.adapter=adp;
   endfunction
     
 endclass
