@@ -182,7 +182,7 @@ endclass
 class wr_reg_seq extends uvm_sequence;
   `uvm_object_utils(wr_reg_seq);
   reg_block regbl;
-  
+  logic [31:0] value=$urandom();
   function new(string name="wr_reg_seq");
     super.new(name);
   endfunction
@@ -190,7 +190,7 @@ class wr_reg_seq extends uvm_sequence;
   task body();
     uvm_status_e status;
     `uvm_info(get_type_name,"WRITE SEQ STARTED",UVM_MEDIUM);
-    regbl.reg0.write(status,'h1);
+    regbl.reg0.write(status,value);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value()),UVM_MEDIUM);
   endtask
   
@@ -208,7 +208,7 @@ class rd_reg_seq extends uvm_sequence;
   
   task body();
     uvm_status_e status;
-    bit [7:0] read_data;
+    logic [31:0] read_data;
     `uvm_info(get_type_name,"READ SEQ STARTED",UVM_MEDIUM);
     regbl.reg0.read(status,read_data);
     `uvm_info(get_type_name,$sformatf("Desired : %0h | Mirror : %0h | Read Data : %0h",regbl.reg0.get(),regbl.reg0.get_mirrored_value(),read_data),UVM_MEDIUM);
@@ -323,7 +323,6 @@ class monitor extends uvm_monitor;
       tr.prdata=apb_if.prdata;
       tr.pready=apb_if.pready;
       tr.pslverr=apb_if.pslverr;
-      `uvm_info(get_type_name(),$sformatf("%0h | %0h | %0h",tr.pwrite,tr.prdata,tr.paddr),UVM_MEDIUM)
       send.write(tr);
     end
     
