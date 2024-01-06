@@ -10,5 +10,5 @@ module apb_system(
     );
     wire penable,pselx;
     apb_peripheral apb_p (pready,pslverr,prdata,pclk,presetn,pwrite,penable,pselx,paddr,pwdata);
-    apb_bridge apb_b (pwrite,paddr,pwdata,pready,pclk,presetn,prdata,ptransfer,pselx,penable);
+    apb_bridge apb_b (pready,pclk,presetn,ptransfer,pselx,penable);
 endmodule

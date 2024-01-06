@@ -27,7 +27,7 @@ class ctrl_reg0 extends uvm_reg;
   rand uvm_reg_field data;
   
   function new(string name="ctrl_reg0");
-    super.new(name,32,UVM_NO_COVERAGE);
+    super.new(name,32,UVM_CVR_ALL);
   endfunction
   
   function void build();
@@ -49,7 +49,7 @@ class ctrl_reg1 extends uvm_reg;
   rand uvm_reg_field data;
   
   function new(string name="ctrl_reg1");
-    super.new(name,32,UVM_NO_COVERAGE);
+    super.new(name,32,UVM_CVR_ALL);
   endfunction
   
   function void build();
@@ -72,7 +72,7 @@ class ctrl_reg2 extends uvm_reg;
   rand uvm_reg_field data;
   
   function new(string name="ctrl_reg2");
-    super.new(name,32,UVM_NO_COVERAGE);
+    super.new(name,32,UVM_CVR_ALL);
   endfunction
   
   function void build();
@@ -95,7 +95,7 @@ class ctrl_reg3 extends uvm_reg;
   rand uvm_reg_field data;
   
   function new(string name="ctrl_reg3");
-    super.new(name,32,UVM_NO_COVERAGE);
+    super.new(name,32,UVM_CVR_ALL);
   endfunction
   
   function void build();
@@ -118,7 +118,7 @@ class ctrl_reg4 extends uvm_reg;
   rand uvm_reg_field data;
   
   function new(string name="ctrl_reg4");
-    super.new(name,32,UVM_NO_COVERAGE);
+    super.new(name,32,UVM_CVR_ALL);
   endfunction
   
   function void build();
@@ -263,7 +263,7 @@ class driver extends uvm_driver #(transaction);
   
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    `uvm_info(get_type_name(),"Build Phase",UVM_HIGH)
+    `uvm_info(get_type_name(),"Build Phase",UVM_MEDIUM)
     if(!uvm_config_db#(virtual apb_system_if)::get(this,"","apb_if",apb_if))
        `uvm_error(get_type_name,"CANNOT GET VIRTUAL INTERFACE")
     tr=transaction::type_id::create("tr");
@@ -328,6 +328,56 @@ class monitor extends uvm_monitor;
     
   endtask
   
+endclass
+
+// SUBSCRIBER //
+
+class subscriber extends uvm_subscriber #(transaction);
+  `uvm_component_utils(subscriber);
+  logic pwrite,pslverr;
+  logic [31:0] paddr;
+  uvm_analysis_imp #(transaction,subscriber) recv_sub;
+  
+  covergroup reg_cov;
+    option.per_instance=1;
+
+    coverpoint pwrite {
+      bins rd={0};
+      bins wr={1};
+    }
+    coverpoint pslverr {
+      bins erf={0};
+      bins err={1};
+    }
+    coverpoint paddr {
+      bins reg0={0};
+      bins reg1={1};
+      bins reg2={2};
+      bins reg3={3};
+      bins reg4={4};
+    }
+  endgroup
+  
+  function new(string name="subscriber",uvm_component parent=null);
+    super.new(name,parent);
+    reg_cov = new();
+  endfunction
+
+  virtual function void build_phase (uvm_phase phase);
+    super.build_phase(phase);
+    `uvm_info(get_type_name(),"Build Phase",UVM_HIGH)
+    recv_sub=new("recv_sub",this);
+  endfunction
+
+  virtual function void write (input transaction t);
+      `uvm_info(get_type_name(),"Write Phase",UVM_HIGH)
+      paddr=t.paddr;
+      pwrite=t.pwrite;
+      pslverr=t.pslverr;
+      reg_cov.sample();
+  endfunction
+
+
 endclass
 
 // SCOREBOARD //
@@ -402,6 +452,7 @@ class env extends uvm_env;
     
   agent agt;
   scoreboard scb;
+  subscriber sub;
   reg_block reg_bl;
   adapter adp;
   uvm_reg_predictor #(transaction) prd;
@@ -414,6 +465,7 @@ class env extends uvm_env;
     adp=adapter::type_id::create("adp",,get_full_name());
     prd=uvm_reg_predictor#(transaction)::type_id::create("prd",this);
     scb=scoreboard::type_id::create("scb",this);
+    sub=subscriber::type_id::create("sub",this);
   endfunction
   
   virtual function void connect_phase(uvm_phase phase);
@@ -422,6 +474,7 @@ class env extends uvm_env;
     reg_bl.default_map.set_base_addr(0);
     agt.mon.send.connect(prd.bus_in);
     agt.mon.send.connect(scb.recv_scb);
+    agt.mon.send.connect(sub.recv_sub);
     prd.map=reg_bl.default_map;
     prd.adapter=adp;
   endfunction

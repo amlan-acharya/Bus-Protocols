@@ -3,10 +3,7 @@
 `timescale 1ns/1ps
 
 module apb_bridge(
-    inout pwrite,
-    inout [31:0] paddr, pwdata,
-    input pready, pclk,presetn,
-    inout [31:0] prdata,
+    input pready,pclk,presetn,
     input ptransfer,
     output logic pselx,penable
   );
