@@ -355,6 +355,7 @@ class subscriber extends uvm_subscriber #(transaction);
       bins reg2={2};
       bins reg3={3};
       bins reg4={4};
+      illegal_bins ill={[5:$]};
     }
   endgroup
   
