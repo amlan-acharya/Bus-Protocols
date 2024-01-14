@@ -361,13 +361,13 @@ class subscriber extends uvm_subscriber #(transaction);
   
   function new(string name="subscriber",uvm_component parent=null);
     super.new(name,parent);
-    reg_cov = new();
   endfunction
 
   virtual function void build_phase (uvm_phase phase);
     super.build_phase(phase);
     `uvm_info(get_type_name(),"Build Phase",UVM_HIGH)
     recv_sub=new("recv_sub",this);
+    reg_cov=new();
   endfunction
 
   virtual function void write (input transaction t);
